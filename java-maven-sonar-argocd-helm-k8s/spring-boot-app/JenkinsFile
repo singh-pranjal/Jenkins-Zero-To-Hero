@@ -1,5 +1,9 @@
 pipeline {
-    agent { docker { image 'maven:3.8.6-openjdk-11' ; args '--entrypoint="" --dns=8.8.8.8 --dns=8.8.4.4' } }
+    agent { 
+    docker { 
+      image 'maven:3.8.6-openjdk-11'
+      args '--entrypoint="" -v /etc/resolv.conf:/etc/resolv.conf:ro'
+}
 
     stages {
 
