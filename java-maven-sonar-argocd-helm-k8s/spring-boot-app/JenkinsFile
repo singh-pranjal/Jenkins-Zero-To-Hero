@@ -1,26 +1,26 @@
 pipeline {
   agent {
-    docker { image 'maven:3.8.6-openjdk-11' }
+    docker {
+      image 'maven:3.8.6-openjdk-11'
+      // override entrypoint and set container DNS so Maven can resolve central
+      args '--entrypoint="" --dns=8.8.8.8 --dns=8.8.4.4'
+    }
   }
 
   stages {
     stage('Checkout') {
-      steps {
-        // simple check to ensure the workspace is available
-        sh 'echo passed'
-        // uncomment the next line to do a branch-specific checkout if needed
-        // git branch: 'main', url: 'https://github.com/iam-veeramalla/Jenkins-Zero-To-Hero.git'
-      }
+      steps { sh 'echo passed' }
     }
 
     stage('Build and Test') {
       steps {
-        sh 'ls -ltr'
-        // build the project and create a JAR file
         sh 'cd java-maven-sonar-argocd-helm-k8s/spring-boot-app && mvn -B -DskipTests=false clean package'
       }
     }
 
+    // ... rest of stages unchanged
+  }
+}
     stage('Static Code Analysis') {
       environment {
         SONAR_URL = "http://54.205.188.149:9000"
