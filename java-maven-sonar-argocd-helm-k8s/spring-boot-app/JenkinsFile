@@ -2,25 +2,33 @@ pipeline {
   agent {
     docker {
       image 'maven:3.8.6-openjdk-11'
-      // override entrypoint and set container DNS so Maven can resolve central
+      // override ENTRYPOINT so Jenkins can run commands, and force DNS so container can resolve Maven Central
       args '--entrypoint="" --dns=8.8.8.8 --dns=8.8.4.4'
     }
   }
 
+  environment {
+    // put any global env vars here if needed
+  }
+
   stages {
     stage('Checkout') {
-      steps { sh 'echo passed' }
+      steps {
+        // keep it simple - pipeline will already checkout SCM in Declarative jobs
+        sh 'echo "checkout stage - workspace:" && pwd && ls -la'
+      }
     }
 
     stage('Build and Test') {
       steps {
-        sh 'cd java-maven-sonar-argocd-helm-k8s/spring-boot-app && mvn -B -DskipTests=false clean package'
+        sh '''
+          set -eux
+          cd java-maven-sonar-argocd-helm-k8s/spring-boot-app
+          mvn -B -DskipTests=false clean package
+        '''
       }
     }
 
-    // ... rest of stages unchanged
-  }
-}
     stage('Static Code Analysis') {
       environment {
         SONAR_URL = "http://54.205.188.149:9000"
@@ -28,8 +36,9 @@ pipeline {
       steps {
         withCredentials([string(credentialsId: 'sonarqube', variable: 'SONAR_AUTH_TOKEN')]) {
           sh '''
+            set -eux
             cd java-maven-sonar-argocd-helm-k8s/spring-boot-app
-            mvn sonar:sonar -Dsonar.login=${SONAR_AUTH_TOKEN} -Dsonar.host.url=${SONAR_URL}
+            mvn -B sonar:sonar -Dsonar.login=${SONAR_AUTH_TOKEN} -Dsonar.host.url=${SONAR_URL}
           '''
         }
       }
@@ -38,11 +47,11 @@ pipeline {
     stage('Build and Push Docker Image') {
       environment {
         DOCKER_IMAGE = "abhishekf5/ultimate-cicd:${BUILD_NUMBER}"
-        // REGISTRY_CREDENTIALS not used directly here (we use docker.withRegistry below)
       }
       steps {
         script {
           sh '''
+            set -eux
             cd java-maven-sonar-argocd-helm-k8s/spring-boot-app
             docker build -t ${DOCKER_IMAGE} .
           '''
@@ -62,6 +71,7 @@ pipeline {
       steps {
         withCredentials([string(credentialsId: 'github', variable: 'GITHUB_TOKEN')]) {
           sh '''
+            set -eux
             git config user.email "pranjalsingh2001@gmail.com"
             git config user.name "singh-pranjal"
             BUILD_NUMBER=${BUILD_NUMBER}
